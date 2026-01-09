@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="Cubeblock.vcxproj" />
+  <Project Path="Cubeblock.vcxproj" Id="824984ca-12da-45f3-a442-47b1e010058d" />
 </Solution>

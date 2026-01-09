@@ -34,6 +34,17 @@ float fov = 75.0f;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+// Physics Variables
+bool isGravityMode = false; // Start in spectator mode (toggle with 'G')
+float playerVerticalVelocity = 0.0f;
+bool isGrounded = false;
+
+// Physics Constants
+const float GRAVITY = 35.0f; // Stronger than earth gravity feels better in games
+const float JUMP_FORCE = 10.0f;
+const float PLAYER_HEIGHT = 1.8f;
+const float PLAYER_WIDTH = 0.6f;
+
 const float cameraSpeed = 0.05f;
 glm::vec3 cameraPos = glm::vec3(0.0f, 10.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -263,45 +274,146 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     if (fov > 90.0f) fov = 90.0f;
 }
 
+bool checkCollision(glm::vec3 pos) {
+    // Define Player Bounding Box
+    // Eyes are at pos.y. Feet are at pos.y - PLAYER_HEIGHT
+    float minX = pos.x - PLAYER_WIDTH / 2.0f;
+    float maxX = pos.x + PLAYER_WIDTH / 2.0f;
+    float minY = pos.y - PLAYER_HEIGHT;
+    float maxY = pos.y + 0.1f; // Small buffer above head
+    float minZ = pos.z - PLAYER_WIDTH / 2.0f;
+    float maxZ = pos.z + PLAYER_WIDTH / 2.0f;
+
+    // Check every integer block coordinate inside this box
+    // We floor/ceil to get the range of blocks we are touching
+    int startX = (int)floor(minX);
+    int endX = (int)floor(maxX);
+    int startY = (int)floor(minY);
+    int endY = (int)floor(maxY);
+    int startZ = (int)floor(minZ);
+    int endZ = (int)floor(maxZ);
+
+    for (int y = startY; y <= endY; y++) {
+        for (int x = startX; x <= endX; x++) {
+            for (int z = startZ; z <= endZ; z++) {
+                if (world.getBlock(x, y, z) != BLOCK_AIR) {
+                    return true; // Collision detected
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool gKeyPressed = false;
+
 void processInput(GLFWwindow* window) {
-    float currentSpeed = 5.0f * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) currentSpeed *= 3.0f;
+    // === Mode Toggling ===
+    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) {
+        if (!gKeyPressed) {
+            isGravityMode = !isGravityMode;
+            gKeyPressed = true;
+            std::cout << "Gravity Mode: " << (isGravityMode ? "ON" : "OFF") << std::endl;
+            // Reset velocity when switching
+            playerVerticalVelocity = 0.0f;
+        }
+    }
+    else {
+        gKeyPressed = false;
+    }
 
-    // Camera Controls
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) cameraPos += currentSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) cameraPos -= currentSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * currentSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * currentSpeed;
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) cameraPos += cameraUp * currentSpeed;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) cameraPos -= cameraUp * currentSpeed;
-
-    // Toggle Infinite Mode (Press 'I')
     if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) world.isInfinite = !world.isInfinite;
 
-    // === MOUSE INTERACTION (With Delay) ===
+    // === Calculate Intended Movement Direction ===
+    float speed = 5.0f * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) speed *= 2.5f;
+
+    glm::vec3 moveDir(0.0f);
+
+    // Flatten cameraFront for movement so we don't fly into the ground when looking down
+    glm::vec3 flatFront = glm::normalize(glm::vec3(cameraFront.x, 0.0f, cameraFront.z));
+    glm::vec3 flatRight = glm::normalize(glm::cross(flatFront, cameraUp));
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) moveDir += flatFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) moveDir -= flatFront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) moveDir -= flatRight;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) moveDir += flatRight;
+
+    if (glm::length(moveDir) > 0.0f) moveDir = glm::normalize(moveDir) * speed;
+
+    // === Apply Movement based on Mode ===
+
+    // Spectator Mode
+    if (!isGravityMode) {
+        cameraPos += moveDir;
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) cameraPos += cameraUp * speed;
+        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) cameraPos -= cameraUp * speed;
+    }
+    // Gravity Mode
+    else {
+        // Horizontal Collision (X axis)
+        if (moveDir.x != 0.0f) {
+            if (!checkCollision(cameraPos + glm::vec3(moveDir.x, 0.0f, 0.0f))) {
+                cameraPos.x += moveDir.x;
+            }
+        }
+        // Horizontal Collision (Z axis)
+        if (moveDir.z != 0.0f) {
+            if (!checkCollision(cameraPos + glm::vec3(0.0f, 0.0f, moveDir.z))) {
+                cameraPos.z += moveDir.z;
+            }
+        }
+
+        // Gravity and Jumping
+        playerVerticalVelocity -= GRAVITY * deltaTime;
+        // Jump Input
+        if (isGrounded && glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+            playerVerticalVelocity = JUMP_FORCE;
+            isGrounded = false;
+        }
+        // Vertical Collision (Y axis)
+        float verticalMove = playerVerticalVelocity * deltaTime;
+
+        if (checkCollision(cameraPos + glm::vec3(0.0f, verticalMove, 0.0f))) {
+            // If moving down (falling) and hit something -> Landed
+            if (verticalMove < 0.0f) {
+                isGrounded = true;
+                playerVerticalVelocity = 0.0f;
+
+            }
+            // If moving up (jump) and hit head -> Bonk
+            else if (verticalMove > 0.0f) {
+                playerVerticalVelocity = 0.0f;
+            }
+        }
+        else {
+            // No collision, apply movement
+            cameraPos.y += verticalMove;
+            isGrounded = false; // We are in the air
+        }
+    }
+
+    // Mouse Logic
     float currentTime = (float)glfwGetTime();
-
-    // Check if 0.2 seconds have passed since last action
     if (currentTime - lastModifyTime > 0.2f) {
-
         bool leftClick = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
         bool rightClick = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
 
         if (leftClick || rightClick) {
             RaycastResult ray = raycast(cameraPos, cameraFront, 8.0f);
-
             if (ray.hit) {
                 if (rightClick) {
-                    // Place Block
                     glm::ivec3 p = ray.blockPos + ray.normal;
-                    world.setBlock(p.x, p.y, p.z, BLOCK_STONE);
+                    // Prevent placing block inside player's head/feet
+                    glm::vec3 playerBox = cameraPos; // Simple check against camera pos
+                    if (glm::distance(glm::vec3(p.x + 0.5f, p.y + 0.5f, p.z + 0.5f), cameraPos) > 1.5f) {
+                        world.setBlock(p.x, p.y, p.z, BLOCK_STONE);
+                    }
                 }
                 else if (leftClick) {
-                    // Remove Block
                     world.setBlock(ray.blockPos.x, ray.blockPos.y, ray.blockPos.z, BLOCK_AIR);
                 }
-                // Reset the timer
                 lastModifyTime = currentTime;
             }
         }
