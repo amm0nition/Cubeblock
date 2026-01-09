@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <glad/glad.h> 
+#include <GLFW/glfw3.h>
 #include <nlohmann/json.hpp> 
 #include "block_manager.hpp"
 #include "stb_image.h"
@@ -78,9 +79,17 @@ void BlockManager::loadBlocks(const char* configPath) {
         }
     }
 
-    // Texture Parameters (Nearest Neighbor for pixel art look)
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+
+    // Texture Parameters
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    if (glfwExtensionSupported("GL_EXT_texture_filter_anisotropic")) {
+        float aniso = 0.0f;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
+        glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY, aniso);
+    }
 }
