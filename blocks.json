@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1,
+    "name": "stone",
+    "texture": "stone.png" 
+  },
+  {
+    "id": 2,
+    "name": "dirt",
+    "texture": "dirt.png"
+  },
+  {
+    "id": 3,
+    "name": "grass",
+    "textures": {
+      "top": "grass_top.png",
+      "bottom": "dirt.png",
+      "side": "grass_side.png"
+    }
+  }
+]

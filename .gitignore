@@ -1,0 +1,89 @@
+# =========================
+# Visual Studio
+# =========================
+
+## User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## User-specific folders
+.vs/
+
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+## Visual Studio cache files
+*.VC.db
+*.VC.VC.opendb
+*.VC.db-shm
+*.VC.db-wal
+
+## Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+.nuget/packages/
+packages/
+
+## .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## ASP.NET
+*.Publish.xml
+*.publishproj
+PublishProfiles/
+wwwroot/
+
+## Azure
+.csdef
+.cscfg
+.csx
+ServiceConfiguration.*
+ServiceDefinition.*
+
+## IIS
+iisexpress/
+.application
+.deploy.cmd
+.deploy.readme
+
+## Resharper / Rider
+_ReSharper*/
+*.[Rr]e[Ss]harper
+.idea/
+
+## Other tooling
+*.swp
+*.tmp
+*.temp
+*.log
+*.bak
+
+## OS junk
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+## Additional files
+[Ss]aves/
